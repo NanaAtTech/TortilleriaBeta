@@ -1,0 +1,36 @@
+name: Add Jira link into the PR description
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  link-jira:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Detect Jira ID and update PR description with a Jira link
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prTitle = context.payload.pull_request.title;
+            const prBody = context.payload.pull_request.body || "";
+            const jiraMatch = prTitle.match(/\[(\w+-\d+)\]/);  // busca [ABC-123]
+
+            if (jiraMatch) {
+              const jiraId = jiraMatch[1];
+              const jiraUrl = `https://nanaattech.atlassian.net/browse/${jiraId}`;
+              const jiraSection = `🎫 Jira Ticket: [${jiraId}](${jiraUrl})`;
+
+              if (!prBody.includes(jiraSection)) {
+                const newBody = `${jiraSection}\n\n${prBody}`;
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  body: newBody
+                });
+              }
+            } else {
+              console.log("Jira ID not found in the PR title.");
+            }
